@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import imageio
 import sklearn
-from keras.regularizers import l2
 
 EPOCHS = 3
 cropx_start = 20
@@ -23,15 +22,11 @@ def crop_image(image):
     cropped = image[cropx_start:cropx_stop,0:y_new]
     return cropped
 
-def flip_image(image):
-    if np.random.randint(2) == 1:
-        image = np.fliplr(image)
-    return image
+
 
 def process_image(image):
     cropped_image = crop_image(image)
-    flipped_image = flip_image(cropped_image)
-    return flipped_image
+    return cropped_image
 
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
@@ -52,21 +47,38 @@ def generator(samples,batch_size=128):
                     current_path = './data/IMG/'
                     correction = 0.2
                     steering_center = float(batch_sample[3])
-                    steering_left = steering_center + correction
-                    steering_right = steering_center - correction
 
                     rand_image = np.random.randint(3)
+
                     if rand_image == 0:
-                    images.append(process_image(imageio.imread(current_path + filename1)))
-                    steerings.append(steering_center)
+                        image = process_image(imageio.imread(current_path + filename1))
+                        if np.random.randint(2) == 1:
+                                steerings.append(steering_center)
+                                image = np.fliplr(image)
+                                images.append(image)
+                        else:
+                            images.append(image)
+                            steerings.append(steering_center)
 
                     if rand_image == 1:
-                    images.append(process_image(imageio.imread(current_path + filename2)))
-                    steerings.append(steering_left)
+                        image = process_image(imageio.imread(current_path + filename2))
+                        if np.random.randint(2) == 1:
+                            steerings.append(steering_center - correction)
+                            image = np.fliplr(image)
+                            images.append(image)
+                        else:
+                            images.append(image)
+                            steerings.append(steering_center + correction)
 
                     if rand_image == 2:
-                    images.append(process_image(imageio.imread(current_path + filename3)))
-                    steerings.append(steering_right)
+                        image = process_image(imageio.imread(current_path + filename3))
+                        if np.random.randint(2) == 1:
+                            steerings.append(steering_center + correction)
+                            image = np.fliplr(image)
+                            images.append(image)
+                        else:
+                            images.append(image)
+                            steering.append(steering_center - correction)
 
                     # Keras needs np array datatype
                     X_train = np.array(images)
@@ -77,8 +89,14 @@ def generator(samples,batch_size=128):
 train_generator = generator(train_samples, batch_size=256)
 validation_generator = generator(validation_samples, batch_size=256)
 
+#a = np.hstack((y_train_plot.normal(size=1000),y_train_plot.normal(loc=5, scale=2, size=1000)))
+#plt.hist(a, bins='auto')
+#plt.title("Histogram of ")
+#plt.show()
+
 from keras.models import Sequential
 from keras.layers import Flatten, Dense,Lambda,Cropping2D,Conv2D,Dropout
+from keras.regularizers import l2
 
 model = Sequential([
     Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(x_new, y_new, 3)),
@@ -142,6 +160,7 @@ plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
 plt.show()
+
 #history_object = model.fit_generator(train_generator, samples_per_epoch =
 #    len(train_samples), validation_data =
 #    validation_generator,
