@@ -22,9 +22,12 @@ def crop_image(image):
     cropped = image[cropx_start:cropx_stop,0:y_new]
     return cropped
 
-
+def normal_image(image):
+    image = (image / 255.0) - 0.5
+    return image
 
 def process_image(image):
+    image = normal_image(image)
     cropped_image = crop_image(image)
     return cropped_image
 
@@ -101,9 +104,8 @@ from keras.layers import Flatten, Dense,Lambda,Cropping2D,Conv2D,Dropout
 from keras.regularizers import l2
 
 model = Sequential([
-    Lambda(lambda x: (x / 255.0) - 0.5, input_shape=(x_new, y_new, 3)),
     # Convolutional layer 1 24@31x98 | 5x5 kernel | 2x2 stride | elu activation
-    Conv2D(24, 5, 5, border_mode='valid', activation='elu', subsample=(2, 2), init='he_normal',W_regularizer=l2(0.001)),
+    Conv2D(24, 5, 5, border_mode='valid', activation='elu', subsample=(2, 2), init='he_normal',W_regularizer=l2(0.001),input_shape=(x_new, y_new, 3)),
     # Dropout with drop probability of .1 (keep probability of .9)
     Dropout(.1),
     # Convolutional layer 2 36@14x47 | 5x5 kernel | 2x2 stride | elu activation
@@ -145,15 +147,16 @@ history = model.fit_generator(train_generator, samples_per_epoch= len(train_samp
             nb_val_samples=len(validation_samples), nb_epoch=EPOCHS)
 
 model.save('model.h5')
+print(drop)
 print(history.history.keys())
 
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.title('model loss')
-plt.ylabel('loss')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
-plt.pyloshow()
+#plt.plot(history.history['loss'])
+#plt.plot(history.history['val_loss'])
+#plt.title('model loss')
+#plt.ylabel('loss')
+#plt.xlabel('epoch')
+#plt.legend(['train', 'test'], loc='upper left')
+#plt.pyloshow()
 
 #history_object = model.fit_generator(train_generator, samples_per_epoch =
 #    len(train_samples), validation_data =
