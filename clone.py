@@ -5,12 +5,12 @@ from PIL import Image
 import imageio
 import sklearn
 
-EPOCHS = 3
+EPOCHS = 2
 cropx_start = 20
 cropx_stop = 110
 x_new = cropx_stop - cropx_start
 y_new = 320
-batch_size = 256
+batch_size = 32
 
 samples = []
 with open('./data/driving_log.csv') as csvfile:
@@ -47,6 +47,8 @@ def generator(samples,batch_size=128):
                     current_path = './data/IMG/'
                     correction = 0.2
                     steering_center = float(batch_sample[3])
+                    if abs(steering_center) < 0.1:
+                        continue
 
                     rand_image = np.random.randint(3)
 
@@ -78,7 +80,7 @@ def generator(samples,batch_size=128):
                             images.append(image)
                         else:
                             images.append(image)
-                            steering.append(steering_center - correction)
+                            steerings.append(steering_center - correction)
 
                     # Keras needs np array datatype
                     X_train = np.array(images)
@@ -86,8 +88,8 @@ def generator(samples,batch_size=128):
 
                     yield sklearn.utils.shuffle(X_train,y_train)
 
-train_generator = generator(train_samples, batch_size=256)
-validation_generator = generator(validation_samples, batch_size=256)
+train_generator = generator(train_samples, batch_size=batch_size)
+validation_generator = generator(validation_samples, batch_size=batch_size)
 
 #a = np.hstack((y_train_plot.normal(size=1000),y_train_plot.normal(loc=5, scale=2, size=1000)))
 #plt.hist(a, bins='auto')
@@ -142,24 +144,16 @@ model.compile(loss='mse', optimizer='adam')
 history = model.fit_generator(train_generator, samples_per_epoch= len(train_samples), validation_data=validation_generator,
             nb_val_samples=len(validation_samples), nb_epoch=EPOCHS)
 
+model.save('model.h5')
 print(history.history.keys())
 
-plt.plot(history.history['acc'])
-plt.plot(history.history['val_acc'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
-plt.show()
-
-# summarize history for loss
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
 plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
-plt.show()
+plt.pyloshow()
 
 #history_object = model.fit_generator(train_generator, samples_per_epoch =
 #    len(train_samples), validation_data =
@@ -178,4 +172,3 @@ plt.show()
 #plt.xlabel('epoch')
 #plt.legend(['training set', 'validation set'], loc='upper right')
 #plt.show()
-#model.save('model.h5')
