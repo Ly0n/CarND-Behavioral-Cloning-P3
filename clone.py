@@ -4,13 +4,18 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import imageio
 import sklearn
+import os
 
-EPOCHS = 2
-cropx_start = 20
-cropx_stop = 110
-x_new = cropx_stop - cropx_start
+# Run on CPU
+#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+EPOCHS = 3
+batch_size = 64
+cropx_top = 50
+cropx_bottom = 140
+x_new = cropx_bottom - cropx_top
 y_new = 320
-batch_size = 32
 
 samples = []
 with open('./data/driving_log.csv') as csvfile:
@@ -19,8 +24,12 @@ with open('./data/driving_log.csv') as csvfile:
         samples.append(line)
 
 def crop_image(image):
-    cropped = image[cropx_start:cropx_stop,0:y_new]
+    cropped = image[cropx_top:cropx_bottom,0:y_new]
     return cropped
+
+def change_brightness(image):
+    image[:,:,:] -= np.random.int(0,1)
+    return image
 
 def normal_image(image):
     image = (image / 255.0) - 0.5
@@ -28,14 +37,14 @@ def normal_image(image):
 
 def process_image(image):
     image = normal_image(image)
-    cropped_image = crop_image(image)
-    return cropped_image
+    image = crop_image(image)
+    return image
 
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 train_samples, validation_samples = train_test_split(samples, test_size=0.2)
 
-def generator(samples,batch_size=128):
+def generator(samples,batch_size=128,validdata=True):
     num_samples = len(samples)
     while 1:
         shuffle(samples)
@@ -48,14 +57,14 @@ def generator(samples,batch_size=128):
                     filename2 = batch_sample[1].split('/')[-1]
                     filename3 = batch_sample[2].split('/')[-1]
                     current_path = './data/IMG/'
-                    correction = 0.2
+                    correction = 0.25
                     steering_center = float(batch_sample[3])
-                    if abs(steering_center) < 0.1:
+                    if abs(steering_center) < 0.01:
                         continue
 
-                    rand_image = np.random.randint(3)
+                    rand_image = 0 #np.random.randint(3)
 
-                    if rand_image == 0:
+                    if rand_image == 0 or validdata==True:
                         image = process_image(imageio.imread(current_path + filename1))
                         if np.random.randint(2) == 1:
                                 steerings.append(steering_center)
@@ -65,20 +74,20 @@ def generator(samples,batch_size=128):
                             images.append(image)
                             steerings.append(steering_center)
 
-                    if rand_image == 1:
+                    if rand_image == 0:
                         image = process_image(imageio.imread(current_path + filename2))
                         if np.random.randint(2) == 1:
-                            steerings.append(steering_center - correction)
+                            steerings.append(-steering_center - correction)
                             image = np.fliplr(image)
                             images.append(image)
                         else:
                             images.append(image)
                             steerings.append(steering_center + correction)
 
-                    if rand_image == 2:
+                    if rand_image == 0:
                         image = process_image(imageio.imread(current_path + filename3))
                         if np.random.randint(2) == 1:
-                            steerings.append(steering_center + correction)
+                            steerings.append(-steering_center + correction)
                             image = np.fliplr(image)
                             images.append(image)
                         else:
@@ -89,10 +98,13 @@ def generator(samples,batch_size=128):
                     X_train = np.array(images)
                     y_train = np.array(steerings)
 
+                    #print(X_train)
+                    #print(y_train)
+
                     yield sklearn.utils.shuffle(X_train,y_train)
 
-train_generator = generator(train_samples, batch_size=batch_size)
-validation_generator = generator(validation_samples, batch_size=batch_size)
+train_generator = generator(train_samples, batch_size=batch_size,validdata=False)
+validation_generator = generator(validation_samples, batch_size=batch_size,validdata=True)
 
 #a = np.hstack((y_train_plot.normal(size=1000),y_train_plot.normal(loc=5, scale=2, size=1000)))
 #plt.hist(a, bins='auto')
@@ -144,10 +156,9 @@ model = Sequential([
 model.summary()
 model.compile(loss='mse', optimizer='adam')
 history = model.fit_generator(train_generator, samples_per_epoch= len(train_samples), validation_data=validation_generator,
-            nb_val_samples=len(validation_samples), nb_epoch=EPOCHS)
+            nb_val_samples=len(validation_samples), nb_epoch=EPOCHS,verbose=1)
 
 model.save('model.h5')
-print(drop)
 print(history.history.keys())
 
 #plt.plot(history.history['loss'])

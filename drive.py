@@ -3,6 +3,9 @@ import base64
 from datetime import datetime
 import os
 import shutil
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# summarize history for loss
 
 import numpy as np
 import socketio
@@ -28,7 +31,7 @@ y_new = 32
 
 def crop_image(image):
     cropped = image[cropx_start:cropx_stop,0:y_new]
-    return cropped
+    return croppe
 
 class SimplePIController:
     def __init__(self, Kp, Ki):
@@ -69,7 +72,6 @@ def telemetry(sid, data):
         imgString = data["image"]
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
-        image_array = crop_image(image_array)
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
 
 # summarize history for loss
