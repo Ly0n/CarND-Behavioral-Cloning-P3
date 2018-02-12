@@ -26,7 +26,8 @@ with open('./data/driving_log.csv') as csvfile:
     reader = csv.reader(csvfile)
     for line in reader:
         samples.append(line)
-# Include Datashuffle and train split
+
+# Datashuffle and train split
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 train_samples, validation_samples = train_test_split(samples, test_size=0.2)
@@ -47,44 +48,29 @@ def generator(samples,batch_size=128):
                     correction = 0.25
                     steering_center = float(batch_sample[3])
                     # Dont use the Data with 0 Steering
-                    if abs(steering_center) < 0.01:
-                        #print("Bin the Data")
-                        continue
+                    #if abs(steering_center) < 0.01:
+                    #    #print("Bin the Data")
+                    #    continue
 
-                    rand_image = 0 #np.random.randint(3)
+                    rand_image = np.random.randint(3)
 
-                    if rand_image == 0:
-                        image = process_image(cv2.imread(current_path + filename1,cv2.IMREAD_COLOR))
-                        if np.random.randint(2) == 1:
-                                steerings.append(steering_center)
-                                image = np.fliplr(image)
-                                images.append(image)
-                        else:
-                            images.append(image)
+                    image = process_image(cv2.imread(current_path + filename1,cv2.IMREAD_COLOR))
+                    if np.random.randint(2) == 1:
                             steerings.append(steering_center)
+                            image = np.fliplr(image)
+                            images.append(image)
+                    else:
+                        images.append(image)
+                        steerings.append(steering_center)
 
-                    if rand_image == 1:
                         # Left camera
-                        image = process_image(cv2.imread(current_path + filename2,cv2.IMREAD_COLOR))
-                        if np.random.randint(2) == 1:
-                            steerings.append(-(steering_center - correction))
-                            image = np.fliplr(image)
-                            images.append(image)
-                        else:
-                            images.append(image)
-                            steerings.append(steering_center - correction)
+                    image = process_image(cv2.imread(current_path + filename2,cv2.IMREAD_COLOR))
+                    images.append(image)
+                    steerings.append(steering_center - correction)
 
-                    if rand_image == 2:
-                        # Left Camera
-                        image = process_image(cv2.imread(current_path + filename3,cv2.IMREAD_COLOR))
-                        if np.random.randint(2) == 1:
-                        #
-                            steerings.append(-(steering_center + correction))
-                            image = np.fliplr(image)
-                            images.append(image)
-                        else:
-                            images.append(image)
-                            steerings.append(steering_center + correction)
+                    image = process_image(cv2.imread(current_path + filename3,cv2.IMREAD_COLOR))
+                    images.append(image)
+                    steerings.append(steering_center + correction)
 
                     # Keras needs np array datatype
                     X_train = np.array(images)
@@ -141,13 +127,14 @@ history = model.fit_generator(train_generator, samples_per_epoch= len(train_samp
 
 model.save('model.h5')
 
-plt.plot(history.history['loss'])
-plt.plot(history.history['val_loss'])
-plt.title('model mean squared error loss')
-plt.ylabel('mean squared error loss')
-plt.xlabel('epoch')
-plt.legend(['training set', 'validation set'], loc='upper right')
-plt.savefig('loss_history.png')
+fig = plt.plot(history.history['loss'])
+fig = plt.plot(history.history['val_loss'])
+fig.title('model mean squared error loss')
+fig.ylabel('mean squared error loss')
+fig.xlabel('epoch')
+fig.legend(['training set', 'validation set'], loc='upper right')
+fig.savefig('loss_history.png')
+fig.close(fig)
 
 #history_object = model.fit_generator(train_generator, samples_per_epoch =
 #    len(train_samples), validation_data =

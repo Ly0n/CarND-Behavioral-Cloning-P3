@@ -3,6 +3,7 @@ import base64
 from datetime import datetime
 import os
 import shutil
+import cv2
 
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
@@ -67,6 +68,7 @@ def telemetry(sid, data):
         imgString = data["image"]
         imageraw = Image.open(BytesIO(base64.b64decode(imgString)))
         image = np.asarray(imageraw)
+        image = cv2.cvtColor(image,cv2.COLOR_RGB2BGR)
         image = normal_image(image)
         image = crop_image(image)
         steering_angle = float(model.predict(image[None, :, :, :], batch_size=1))
