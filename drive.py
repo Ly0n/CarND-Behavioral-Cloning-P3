@@ -4,11 +4,6 @@ from datetime import datetime
 import os
 import shutil
 
-# Run on cpu
-os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-# summarize history for loss
-
 import numpy as np
 import socketio
 import eventlet
@@ -16,23 +11,16 @@ import eventlet.wsgi
 from PIL import Image
 from flask import Flask
 from io import BytesIO
-import cv2
+from utils import crop_image,normal_image
 
 from keras.models import load_model
 import h5py
 from keras import __version__ as keras_version
 
-from clone import crop_imag,normal_image
-
 sio = socketio.Server()
 app = Flask(__name__)
 model = None
 prev_image_array = None
-
-cropx_start = 50
-cropx_stop = 140
-x_new = cropx_stop - cropx_start
-y_new = 320
 
 class SimplePIController:
     def __init__(self, Kp, Ki):
@@ -56,7 +44,7 @@ class SimplePIController:
 
 
 controller = SimplePIController(0.1, 0.002)
-set_speed = 9
+set_speed = SimplePIController(0.1, 0.002)
 controller.set_desired(set_speed)
 
 
@@ -73,9 +61,8 @@ def telemetry(sid, data):
         imgString = data["image"]
         image = Image.open(BytesIO(base64.b64decode(imgString)))
         image_array = np.asarray(image)
-        img_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2RGB)
-        image_array = crop_image(image_array)
-        image_array = normal_image(image_array)
+        #image_array = normal_image(image_array)
+        #image_array = crop_image(image_array)
         steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
 
 # summarize history for loss
@@ -137,7 +124,7 @@ if __name__ == '__main__':
               ', but the model was built using ', model_version)
 
     model = load_model(args.model)
-    model.summary()
+
     if args.image_folder != '':
         print("Creating image folder at {}".format(args.image_folder))
         if not os.path.exists(args.image_folder):

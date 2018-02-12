@@ -6,12 +6,13 @@ import imageio
 import sklearn
 import os
 import cv2
+from utils import crop_image,normal_image,change_brightness,process_image
 # Run on CPU
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-# Set your Hyperparameters
-EPOCHS = 1
+# Set your cHyperparameters
+EPOCHS = 2
 batch_size = 64
 learning_rate = 0.0001
 cropx_top = 50
@@ -25,26 +26,6 @@ with open('./data/driving_log.csv') as csvfile:
     reader = csv.reader(csvfile)
     for line in reader:
         samples.append(line)
-
-# Define Preprocessing Pipeline
-def crop_image(image):
-    cropped = image[cropx_top:cropx_bottom,0:y_new]
-    return cropped
-
-def change_brightness(image):
-    image = image + np.random.random_integers(-20,20)
-    return image
-
-def normal_image(image):
-    image = (image / 255.0) - 0.5
-    return image
-
-def process_image(image):
-    image = change_brightness(image)
-    image = normal_image(image)
-    image = crop_image(image)
-    return image
-
 # Include Datashuffle and train split
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
@@ -70,7 +51,7 @@ def generator(samples,batch_size=128):
                         #print("Bin the Data")
                         continue
 
-                    rand_image = np.random.randint(3)
+                    rand_image = 0 #np.random.randint(3)
 
                     if rand_image == 0:
                         image = process_image(cv2.imread(current_path + filename1,cv2.IMREAD_COLOR))
@@ -140,8 +121,8 @@ model = Sequential([
     # Dropout with drop probability of .5
 
     # Added another dense layer
-    Dense(500, activation='elu', init='he_normal'),
-    Dropout(.5),
+#    Dense(500, activation='elu', init='he_normal'),
+#    Dropout(.5),
 
     Dense(100, activation='elu', init='he_normal'),
     Dropout(.5),
@@ -162,10 +143,10 @@ model.save('model.h5')
 
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
-plt.title('model loss')# Not Prints since docker :D
-plt.ylabel('loss')
+plt.title('model mean squared error loss')
+plt.ylabel('mean squared error loss')
 plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
+plt.legend(['training set', 'validation set'], loc='upper right')
 plt.savefig('loss_history.png')
 
 #history_object = model.fit_generator(train_generator, samples_per_epoch =
