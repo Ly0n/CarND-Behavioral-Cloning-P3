@@ -6,19 +6,20 @@ import imageio
 import sklearn
 import os
 import cv2
-from utils import crop_image,normal_image,change_brightness,process_image
+from utils import crop_image,normal_image,process_image
 # Run on CPU
 #os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
 # Set your cHyperparameters
-EPOCHS = 2
-batch_size = 64
+EPOCHS = 1
+batch_size = 128
 learning_rate = 0.0001
 cropx_top = 50
 cropx_bottom = 140
 x_new = cropx_bottom - cropx_top
 y_new = 320
+arg_div = 18
 
 # Get your Samples
 samples = []
@@ -45,32 +46,36 @@ def generator(samples,batch_size=128):
                     filename2 = batch_sample[1].split('/')[-1]
                     filename3 = batch_sample[2].split('/')[-1]
                     current_path = './data/IMG/'
-                    correction = 0.25
                     steering_center = float(batch_sample[3])
                     # Dont use the Data with 0 Steering
                     #if abs(steering_center) < 0.01:
                     #    #print("Bin the Data")
                     #    continue
+                    image = cv2.imread(current_path + filename1)
+                    image = cv2.cvtColor(image,cv2.COLOR_BGR2YUV)
+                    image = process_image(image)
 
-                    rand_image = np.random.randint(3)
+                    if np.random.randint(arg_div) == 1:
+                        steering_center = -steering_center
+                        image = np.fliplr(image)
+                    #if np.random.randint(arg_div) == 1:
+                    #    image = cv2.resize(image, (100, 50))
 
-                    image = process_image(cv2.imread(current_path + filename1,cv2.IMREAD_COLOR))
-                    if np.random.randint(2) == 1:
-                            steerings.append(steering_center)
-                            image = np.fliplr(image)
-                            images.append(image)
-                    else:
-                        images.append(image)
-                        steerings.append(steering_center)
+                    if np.random.randint(arg_div) == 1:
+                        image = image + np.random.random_integers(-20,20)
 
-                        # Left camera
-                    image = process_image(cv2.imread(current_path + filename2,cv2.IMREAD_COLOR))
+                    if np.random.randint(arg_div) == 1:
+                        dx=10
+                        dy=10
+                        shiftx = dx * (np.random.rand() - 0.5)
+                        shifty = dy * (np.random.rand() - 0.5)
+                        steering_center += shiftx * 0.002
+                        mask = np.float32([[1, 0, shiftx], [0, 1, shifty]])
+                        height, width = image.shape[:2]
+                        image = cv2.warpAffine(image, mask, (width, height))
+
+                    steerings.append(steering_center)
                     images.append(image)
-                    steerings.append(steering_center - correction)
-
-                    image = process_image(cv2.imread(current_path + filename3,cv2.IMREAD_COLOR))
-                    images.append(image)
-                    steerings.append(steering_center + correction)
 
                     # Keras needs np array datatype
                     X_train = np.array(images)
@@ -90,33 +95,28 @@ model = Sequential([
     # 5 Conv2D Layers with weight regularizer
     # It draws samples from a truncated normal distribution centered on 0 with
     # Activation Function elu
-    # Low Droput
-
-    Conv2D(24, 5, 5, border_mode='valid', activation='elu', subsample=(2, 2), init='he_normal',input_shape=(x_new, y_new, 3)),
-    Dropout(.1),
-    Conv2D(36, 5, 5, border_mode='valid', activation='elu', subsample=(2, 2), init='he_normal'),
-    Dropout(.2),
-    Conv2D(48, 5, 5, border_mode='valid', activation='elu', subsample=(2, 2), init='he_normal'),
-    Dropout(.2),
-    Conv2D(64, 3, 3, border_mode='valid', activation='elu', subsample=(1, 1), init='he_normal'),
-    Dropout(.2),
-    Conv2D(64, 3, 3, border_mode='valid', activation='elu', subsample=(1, 1), init='he_normal'),
+    # Low Droprelu
+    Conv2D(24, 5, 5, activation='relu',subsample=(2, 2),input_shape=(x_new, y_new, 3)),
+    Conv2D(36, 5, 5, activation='relu',subsample=(2, 2)),
+    Conv2D(48, 5, 5, activation='relu',subsample=(2, 2)),
+    Conv2D(64, 3, 3, activation='relu',subsample=(1, 1)),
+    Conv2D(64, 3, 3, activation='relu',subsample=(1, 1)),
     Flatten(),
 
     # 5 Fully Connected Layers
     # Dropout with drop probability of .5
 
     # Added another dense layer
-#    Dense(500, activation='elu', init='he_normal'),
+#    Dense(500, activation='u', init='he_normal'),
 #    Dropout(.5),
 
-    Dense(100, activation='elu', init='he_normal'),
+    Dense(100, activation='relu'),
     Dropout(.5),
-    Dense(50, activation='elu', init='he_normal'),
+    Dense(50, activation='relu'),
     Dropout(.5),
-    Dense(10, activation='elu', init='he_normal'),
-    Dropout(.5),        # Output
-    Dense(1, activation='linear', init='he_normal')
+    Dense(10, activation='relu'),
+    Dropout(.25),        # Output
+    Dense(1, activation='linear')
     # One single steering output
 ])
 
@@ -127,6 +127,7 @@ history = model.fit_generator(train_generator, samples_per_epoch= len(train_samp
 
 model.save('model.h5')
 
+fig = plt.figure()
 fig = plt.plot(history.history['loss'])
 fig = plt.plot(history.history['val_loss'])
 fig.title('model mean squared error loss')
@@ -137,7 +138,7 @@ fig.savefig('loss_history.png')
 fig.close(fig)
 
 #history_object = model.fit_generator(train_generator, samples_per_epoch =
-#    len(train_samples), validation_data =
+#    len(train_samples), validatio
 #    validation_generator,
 #    nb_val_samples = len(validation_samples),
 #    nb_epoch=5, verbose=1)
