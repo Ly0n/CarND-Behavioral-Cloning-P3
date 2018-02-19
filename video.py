@@ -34,9 +34,9 @@ def main():
     clip = ImageSequenceClip(image_list, fps=args.fps)
     
     try:
-        clip.write_videofile(video_file_1)
+        clip.write_videofile(video_file_,codec='libx264')
     except:
-        clip.write_videofile(video_file_2)
+        clip.write_videofile(video_file_2,codec='libx264')
 
 
 if __name__ == '__main__':

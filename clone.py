@@ -7,19 +7,20 @@ import sklearn
 import os
 import cv2
 from utils import crop_image,normal_image,process_image
-# Run on CPU
-#os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
-#os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
-# Set your cHyperparameters
+# Run on CPU or comment out for GPU
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+
+# Set your Hyperparameters
 EPOCHS = 1
-batch_size = 128
-learning_rate = 0.0001
+batch_size = 128 # Higher Batchsize is not possible with 2GB RAM
+#learning_rate = 0.0001
 cropx_top = 50
 cropx_bottom = 140
 x_new = cropx_bottom - cropx_top
 y_new = 320
-arg_div = 18
+arg_div = 18 # Increasing the argumentation div will lower the probability for image argumentation
 
 # Get your Samples
 samples = []
@@ -41,32 +42,42 @@ def generator(samples,batch_size=128):
                  batch_samples = samples[offset:offset+batch_size]
                  images = []
                  steerings = []
-                 for batch_sample in batch_samples:
+
+                 for batch_sample in batch_sampleswriteup_template.md:
                     filename1 = batch_sample[0].split('/')[-1]
-                    filename2 = batch_sample[1].split('/')[-1]
-                    filename3 = batch_sample[2].split('/')[-1]
+                    # Load images from car side cameras
+                    #filename2 = batch_sample[1].split('/')[-1]
+                    #filename3 = batch_sample[2].split('/')[-1]
+
                     current_path = './data/IMG/'
                     steering_center = float(batch_sample[3])
-                    # Dont use the Data with 0 Steering
+
+                    # Not needed when training data is generated with mouse
                     #if abs(steering_center) < 0.01:
                     #    #print("Bin the Data")
                     #    continue
-                    image = cv2.imread(current_path + filename1)
-                    image = cv2.cvtColor(image,cv2.COLOR_BGR2YUV)
-                    image = process_image(image)
 
+                    image = cv2.imread(current_path + filename1)
+                    # DNN shows good results in the YUV colorspace
+                    image = cv2.cvtColor(image,cv2.COLOR_BGR2YUV)
+                    # Just do the cropping for all images since normalization
+                    image = crop_image(image)
+
+                    # Flip Image and steering
                     if np.random.randint(arg_div) == 1:
                         steering_center = -steering_center
                         image = np.fliplr(image)
                     #if np.random.randint(arg_div) == 1:
                     #    image = cv2.resize(image, (100, 50))
 
+                    # Change the brightness of the images
                     if np.random.randint(arg_div) == 1:
                         image = image + np.random.random_integers(-20,20)
 
+                    # Shift the images and the steerings
                     if np.random.randint(arg_div) == 1:
-                        dx=10
-                        dy=10
+                        dx=15
+                        dy=15
                         shiftx = dx * (np.random.rand() - 0.5)
                         shifty = dy * (np.random.rand() - 0.5)
                         steering_center += shiftx * 0.002
@@ -81,6 +92,7 @@ def generator(samples,batch_size=128):
                     X_train = np.array(images)
                     y_train = np.array(steerings)
 
+                    # Shuffle the training data before return to the generator
                     yield sklearn.utils.shuffle(X_train,y_train)
 
 train_generator = generator(train_samples, batch_size=batch_size)
@@ -90,35 +102,35 @@ from keras.models import Sequential
 from keras.layers import Flatten, Dense,Lambda,Cropping2D,Conv2D,Dropout
 from keras.regularizers import l2
 
-model = Sequential([
+model = Sequential()
 
     # 5 Conv2D Layers with weight regularizer
     # It draws samples from a truncated normal distribution centered on 0 with
     # Activation Function elu
     # Low Droprelu
-    Conv2D(24, 5, 5, activation='relu',subsample=(2, 2),input_shape=(x_new, y_new, 3)),
-    Conv2D(36, 5, 5, activation='relu',subsample=(2, 2)),
-    Conv2D(48, 5, 5, activation='relu',subsample=(2, 2)),
-    Conv2D(64, 3, 3, activation='relu',subsample=(1, 1)),
-    Conv2D(64, 3, 3, activation='relu',subsample=(1, 1)),
-    Flatten(),
+model.add(Lambda(lambda x: x / 255.0 -0.5,input_shape=(x_new, y_new, 3)))
+model.add(Conv2D(24, 5, 5, activation='relu',subsample=(2, 2)))
+model.add(Conv2D(36, 5, 5, activation='relu',subsample=(2, 2)))
+model.add(Conv2D(48, 5, 5, activation='relu',subsample=(2, 2)))
+model.add(Conv2D(64, 3, 3, activation='relu',subsample=(1, 1)))
+model.add(Conv2D(64, 3, 3, activation='relu',subsample=(1, 1)))
+model.add(Flatten())
 
     # 5 Fully Connected Layers
     # Dropout with drop probability of .5
 
     # Added another dense layer
-#    Dense(500, activation='u', init='he_normal'),
-#    Dropout(.5),
+    # Dense(500, activation='u', init='he_normal'),
+    # Dropout(.5),
+model.add(Dense(100, activation='relu'))
+model.add(Dropout(.5))
+model.add(Dense(50, activation='relu'))
+model.add(Dropout(.5))
+model.add(Dense(10, activation='relu'))
+model.add(Dropout(.25))        # Output
+model.add(Dense(1, activation='linear'))
+    # One single steering output as a linear function
 
-    Dense(100, activation='relu'),
-    Dropout(.5),
-    Dense(50, activation='relu'),
-    Dropout(.5),
-    Dense(10, activation='relu'),
-    Dropout(.25),        # Output
-    Dense(1, activation='linear')
-    # One single steering output
-])
 
 model.summary()
 model.compile(loss='mse', optimizer='Adam')
@@ -127,6 +139,7 @@ history = model.fit_generator(train_generator, samples_per_epoch= len(train_samp
 
 model.save('model.h5')
 
+# Saving the figure does not work form the docker container
 fig = plt.figure()
 fig = plt.plot(history.history['loss'])
 fig = plt.plot(history.history['val_loss'])

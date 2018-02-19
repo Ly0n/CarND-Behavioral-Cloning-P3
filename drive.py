@@ -3,6 +3,12 @@ import base64
 from datetime import datetime
 import os
 import shutil
+import cv2
+
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+# summarize history for loss
+
 
 import numpy as np
 import socketio
@@ -21,6 +27,9 @@ sio = socketio.Server()
 app = Flask(__name__)
 model = None
 prev_image_array = None
+
+steering_multi = 6
+
 
 class SimplePIController:
     def __init__(self, Kp, Ki):
@@ -44,7 +53,7 @@ class SimplePIController:
 
 
 controller = SimplePIController(0.1, 0.002)
-set_speed = SimplePIController(0.1, 0.002)
+set_speed = 9
 controller.set_desired(set_speed)
 
 
@@ -59,13 +68,13 @@ def telemetry(sid, data):
         speed = data["speed"]
         # The current image from the center camera of the car
         imgString = data["image"]
-        image = Image.open(BytesIO(base64.b64decode(imgString)))
-        image_array = np.asarray(image)
-        #image_array = normal_image(image_array)
-        #image_array = crop_image(image_array)
-        steering_angle = float(model.predict(image_array[None, :, :, :], batch_size=1))
-
-# summarize history for loss
+        imageraw = Image.open(BytesIO(base64.b64decode(imgString)))
+        image = np.asarray(imageraw)
+        image = cv2.cvtColor(image,cv2.COLOR_RGB2YUV)
+        #image = normal_image(image)
+        image = crop_image(image)
+        image_tran = image[None,:,:,:]
+        steering_angle = steering_multi*float(model.predict(image_tran, batch_size=1))
 
         throttle = controller.update(float(speed))
 
@@ -76,7 +85,7 @@ def telemetry(sid, data):
         if args.image_folder != '':
             timestamp = datetime.utcnow().strftime('%Y_%m_%d_%H_%M_%S_%f')[:-3]
             image_filename = os.path.join(args.image_folder, timestamp)
-            image.save('{}.jpg'.format(image_filename))
+            imageraw.save('{}.jpg'.format(image_filename))
     else:
         # NOTE: DON'T EDIT THIS.
         sio.emit('manual', data={}, skip_sid=True)
