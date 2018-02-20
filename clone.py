@@ -7,6 +7,7 @@ import sklearn
 import os
 import cv2
 from utils import crop_image,normal_image,process_image
+from debug import ipsh
 
 # Run on CPU or comment out for GPU
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
@@ -28,12 +29,11 @@ with open('./data/driving_log.csv') as csvfile:
     reader = csv.reader(csvfile)
     for line in reader:
         samples.append(line)
-
 # Datashuffle and train split
 from sklearn.model_selection import train_test_split
 from sklearn.utils import shuffle
 train_samples, validation_samples = train_test_split(samples, test_size=0.2)
-
+ipsh() # Embedded ipython console
 def generator(samples,batch_size=128):
     num_samples = len(samples)
     while 1:
@@ -59,7 +59,7 @@ def generator(samples,batch_size=128):
                     """
                     # Not needed when training data is generated with mouse
                     if abs(steering_center) < 0.01:
-                        print("Bin the Data")
+                        print("Jump over straight data")
                         continue
                     """
                     #Load the Images
@@ -143,6 +143,7 @@ history = model.fit_generator(train_generator, samples_per_epoch= len(train_samp
 
 model.save('model.h5')
 
+ipsh()
 # Saving the figure does not work form the docker container
 fig = plt.figure()
 fig = plt.plot(history.history['loss'])
