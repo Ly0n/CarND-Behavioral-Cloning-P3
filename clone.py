@@ -37,26 +37,32 @@ train_samples, validation_samples = train_test_split(samples, test_size=0.2)
 def generator(samples,batch_size=128):
     num_samples = len(samples)
     while 1:
+        # Shuffle the trainings data
         shuffle(samples)
+        # Split the data in batches
         for offset in range(0,num_samples,batch_size):
                  batch_samples = samples[offset:offset+batch_size]
                  images = []
                  steerings = []
-
-                 for batch_sample in batch_sampleswriteup_template.md:
+                 # Process every batch
+                 for batch_sample in batch_samples:
+                    # Get the front camera image
                     filename1 = batch_sample[0].split('/')[-1]
+                    """
                     # Load images from car side cameras
-                    #filename2 = batch_sample[1].split('/')[-1]
-                    #filename3 = batch_sample[2].split('/')[-1]
-
+                    filename2 = batch_sample[1].split('/')[-1]
+                    filename3 = batch_sample[2].split('/')[-1]
+                    """
+                    # Get images from fixed path that is not the same as csv record
                     current_path = './data/IMG/'
                     steering_center = float(batch_sample[3])
-
+                    """
                     # Not needed when training data is generated with mouse
-                    #if abs(steering_center) < 0.01:
-                    #    #print("Bin the Data")
-                    #    continue
-
+                    if abs(steering_center) < 0.01:
+                        print("Bin the Data")
+                        continue
+                    """
+                    #Load the Images
                     image = cv2.imread(current_path + filename1)
                     # DNN shows good results in the YUV colorspace
                     image = cv2.cvtColor(image,cv2.COLOR_BGR2YUV)
@@ -78,6 +84,7 @@ def generator(samples,batch_size=128):
                     if np.random.randint(arg_div) == 1:
                         dx=15
                         dy=15
+                        # Randomly change the shifting
                         shiftx = dx * (np.random.rand() - 0.5)
                         shifty = dy * (np.random.rand() - 0.5)
                         steering_center += shiftx * 0.002
@@ -117,11 +124,8 @@ model.add(Conv2D(64, 3, 3, activation='relu',subsample=(1, 1)))
 model.add(Flatten())
 
     # 5 Fully Connected Layers
-    # Dropout with drop probability of .5
+    # Dropout with drop probability of .5 and .25
 
-    # Added another dense layer
-    # Dense(500, activation='u', init='he_normal'),
-    # Dropout(.5),
 model.add(Dense(100, activation='relu'))
 model.add(Dropout(.5))
 model.add(Dense(50, activation='relu'))

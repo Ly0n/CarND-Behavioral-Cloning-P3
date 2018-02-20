@@ -28,7 +28,7 @@ app = Flask(__name__)
 model = None
 prev_image_array = None
 
-steering_multi = 6
+steering_multi = 4
 
 
 class SimplePIController:
