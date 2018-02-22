@@ -6,6 +6,8 @@ import imageio
 import sklearn
 import os
 import cv2
+
+# More tools
 from utils import crop_image,normal_image,process_image
 from debug import ipsh
 
@@ -73,8 +75,6 @@ def generator(samples,batch_size=128):
                     if np.random.randint(arg_div) == 1:
                         steering_center = -steering_center
                         image = np.fliplr(image)
-                    #if np.random.randint(arg_div) == 1:
-                    #    image = cv2.resize(image, (100, 50))
 
                     # Change the brightness of the images
                     if np.random.randint(arg_div) == 1:
