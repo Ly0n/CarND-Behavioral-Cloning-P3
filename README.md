@@ -25,12 +25,12 @@ Using the Udacity provided simulator and my drive.py file, the car can be driven
 
 ##### Turn autonomous Cycles in the Simulator
 ```
-~/linux_sim/linux_sim.x86_64
+~/linux_sim/linux_sim.x86_64 # Start Autonomous Mode on first track
 python3 drive.py model.h5
-
 ```
 ##### Train the Model
 ```
+~/linux_sim/linux_sim.x84_64 # Start Training Mode and save data to ./data
 python3 clone.py
 ```
 
@@ -123,6 +123,7 @@ Here is a visualization of the architecture:
     Non-trainable params: 0
 ```
 
+The Output is just a single linear value that represents the steering predicted from the input image.
 
 #### 3. Creation of the Training Set
 
@@ -130,11 +131,11 @@ To capture good driving behavior, I first recorded two laps on track one using c
 
 ![alt text][image1] ![alt text][image2]
 
-I then recorded the vehicle recovering from the left side and right sides of the road back to center line so that the vehicle would learn to bring it back to the center of the road. The images show what a recovery looks like starting from right to the left side. After that I repeated this process into both driving directions and added different driving styles like an agile sinus drive. After the collection process, I had 12786 number of data points containing three images per point. I finally randomly shuffled the data set and put 20% of the data into a validation set. Left and right images have been ignored, since setting a fixed correction factor did not improved the driving behavior.
+I then recorded the vehicle recovering from the left side and right sides of the road back to center line so that the vehicle would learn to bring it back to the center of the road. The images show what a recovery looks like starting from right to the left side. After that I repeated this process into both driving directions and added different driving styles like an agile sinus drive. After the collection process, I had 12786 number of data points containing three images per point. I finally randomly shuffled the data set and put 20% of the data into a validation set. Left and right images have been ignored, since setting a fixed correction steering offset did not improved the driving behavior.
 
 #### 4. Data Processing
-Every image is cropped at the top and bottom, focusing the data only on the street view of the camera.
-Inside the generator the images were also randomly dimmed and shifted. To augment the data set, I flipped images and angles thinking that this would equalize the left and right turns. For example, here is an image that has then been flipped:
+Every image is cropped at the top and bottom, focusing the data only on the street view of the camera. The images are load in the YUV Colorspace from RGB, since this showed good performance with other DNNs.
+Inside the generator the images were also randomly dimmed and shifted with a probability of 1/18 for every processing step. To augment the data set, I flipped images and angles thinking that this would equalize the left and right turns. For example, here is an image that has then been flipped:
 
 ![alt text][image3] ![alt text][image4]
 

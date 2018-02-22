@@ -7,7 +7,7 @@ import sklearn
 import os
 import cv2
 
-# More tools
+# More tools for debugging an image processing
 from utils import crop_image,normal_image,process_image
 from debug import ipsh
 
@@ -15,6 +15,10 @@ from debug import ipsh
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 
+# GLobal Image Keeper
+
+image_orgi = 0
+imageshift = 0
 # Set your Hyperparameters
 EPOCHS = 1
 batch_size = 128 # Higher Batchsize is not possible with 2GB RAM
@@ -85,13 +89,15 @@ def generator(samples,batch_size=128):
                         dx=15
                         dy=15
                         # Randomly change the shifting
-                        shiftx = dx * (np.random.rand() - 0.5)
-                        shifty = dy * (np.random.rand() - 0.5)
-                        steering_center += shiftx * 0.002
-                        mask = np.float32([[1, 0, shiftx], [0, 1, shifty]])
+                        sx = dx * (np.random.rand() - 0.5)
+                        sy = dy * (np.random.rand() - 0.5)
+                        # Steering angle shifter
+                        steering_center += sx * 0.002
+                        mask = np.float32([[1, 0, sx], [0, 1, sy]])
                         height, width = image.shape[:2]
                         image = cv2.warpAffine(image, mask, (width, height))
 
+                    # Append training data
                     steerings.append(steering_center)
                     images.append(image)
 
@@ -107,7 +113,6 @@ validation_generator = generator(validation_samples, batch_size=batch_size)
 
 from keras.models import Sequential
 from keras.layers import Flatten, Dense,Lambda,Cropping2D,Conv2D,Dropout
-from keras.regularizers import l2
 
 model = Sequential()
 
@@ -146,8 +151,8 @@ model.save('model.h5')
 ipsh()
 # Saving the figure does not work form the docker container
 fig = plt.figure()
-fig = plt.plot(history.history['loss'])
-fig = plt.plot(history.history['val_loss'])
+plt.plot(history.history['loss'])
+plt.plot(history.history['val_loss'])
 fig.title('model mean squared error loss')
 fig.ylabel('mean squared error loss')
 fig.xlabel('epoch')

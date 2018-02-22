@@ -75,9 +75,7 @@ def telemetry(sid, data):
         image = crop_image(image)
         image_tran = image[None,:,:,:]
         steering_angle = steering_multi*float(model.predict(image_tran, batch_size=1))
-
         throttle = controller.update(float(speed))
-
         print(steering_angle, throttle)
         send_control(steering_angle, throttle)
 
